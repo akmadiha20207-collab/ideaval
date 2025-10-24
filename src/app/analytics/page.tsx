@@ -71,6 +71,19 @@ export default function AnalyticsPage() {
     }
   }, [user])
 
+  // Handle idea selection from query parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const ideaId = urlParams.get('idea')
+    
+    if (ideaId && ideas.length > 0) {
+      const idea = ideas.find(i => i.id === ideaId)
+      if (idea) {
+        setSelectedIdea(idea)
+      }
+    }
+  }, [ideas])
+
   useEffect(() => {
     if (selectedIdea) {
       fetchValidationsForIdea(selectedIdea.id)

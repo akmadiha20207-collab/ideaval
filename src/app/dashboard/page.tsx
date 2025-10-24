@@ -295,7 +295,7 @@ export default function Dashboard() {
                             </div>
                           )}
                           <div className="flex space-x-2">
-                            <Link href={`/idea/${idea.id}/analytics`}>
+                            <Link href={`/analytics?idea=${idea.id}`}>
                               <Button variant="outline" size="sm">
                                 View Analytics
                               </Button>
