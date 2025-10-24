@@ -353,9 +353,9 @@ export default function ValidateIdeasPage() {
               ) : (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Market Validation Questions</CardTitle>
+                    <CardTitle>Idea Validation Questions</CardTitle>
                     <CardDescription>
-                      Answer these AI-generated questions to help validate the idea
+                      Share your thoughts on different aspects of this idea
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -374,9 +374,14 @@ export default function ValidateIdeasPage() {
                     ) : mcqs.length > 0 ? (
                       mcqs.map((mcq, questionIndex) => (
                         <div key={questionIndex} className="space-y-3">
-                          <h4 className="font-medium">
-                            {questionIndex + 1}. {mcq.question}
-                          </h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">
+                              {questionIndex + 1}. {mcq.question}
+                            </h4>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              {mcq.factor}
+                            </span>
+                          </div>
                           <div className="space-y-2">
                             {mcq.options.map((option, optionIndex) => (
                               <label

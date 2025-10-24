@@ -81,7 +81,6 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!selectedIdea) return
 
-    console.log('Setting up real-time subscription for idea:', selectedIdea.id)
     const channel = supabase
       .channel(`validations-${selectedIdea.id}`)
       .on(
@@ -93,7 +92,6 @@ export default function AnalyticsPage() {
           filter: `idea_id=eq.${selectedIdea.id}`,
         },
         (payload) => {
-          console.log('Real-time validation change:', payload)
           // Refresh validations when they change
           fetchValidationsForIdea(selectedIdea.id)
         }
@@ -101,7 +99,6 @@ export default function AnalyticsPage() {
       .subscribe()
 
     return () => {
-      console.log('Cleaning up real-time subscription')
       supabase.removeChannel(channel)
     }
   }, [selectedIdea])
@@ -189,6 +186,12 @@ export default function AnalyticsPage() {
         .filter(v => v.vote === 'maybe')
         .map(v => v.opinion_text)
 
+      // Extract MCQ data
+      const mcqData = {
+        mcqs: validations[0]?.mcqs || [],
+        answers: validations.map(v => v.mcq_answers || [])
+      }
+
       const summary = await geminiService.generateValidationSummary(
         selectedIdea.name || selectedIdea.title || 'Untitled Idea',
         selectedIdea.tagline || selectedIdea.title || 'No tagline',
@@ -196,7 +199,8 @@ export default function AnalyticsPage() {
         selectedIdea.brief || selectedIdea.description || 'No description',
         upvoteOpinions,
         downvoteOpinions,
-        maybeOpinions
+        maybeOpinions,
+        mcqData
       )
 
       setAiSummary(summary)
@@ -525,6 +529,13 @@ export default function AnalyticsPage() {
                               <h4 className="font-semibold text-yellow-700 mb-2">Maybe Feedback Summary</h4>
                               <p className="text-sm text-gray-700 bg-yellow-50 p-3 rounded-lg">
                                 {aiSummary.maybe_summary}
+                              </p>
+                            </div>
+
+                            <div>
+                              <h4 className="font-semibold text-indigo-700 mb-2">MCQ Analysis by Factor</h4>
+                              <p className="text-sm text-gray-700 bg-indigo-50 p-3 rounded-lg">
+                                {aiSummary.mcq_analysis}
                               </p>
                             </div>
 

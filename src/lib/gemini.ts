@@ -19,13 +19,14 @@ try {
 export interface MCQ {
   question: string
   options: string[]
-  correct_answer: number
+  factor: 'Feasibility' | 'Scalability' | 'Market Potential' | 'Uniqueness'
 }
 
 export interface ValidationSummary {
   upvote_summary: string
   downvote_summary: string
   maybe_summary: string
+  mcq_analysis: string
   overall_analysis: string
   recommendations: string[]
 }
@@ -50,31 +51,41 @@ export class GeminiService {
 
   async generateMCQs(ideaName: string, ideaTagline: string, ideaIndustry: string, ideaBrief: string): Promise<MCQ[]> {
     const prompt = `
-Generate 4 market-validation-related multiple-choice questions about this business idea:
+Generate 4 simple multiple-choice questions that help validate a startup or business idea based on the following details:
 
-Idea Name: ${ideaName}
-Tagline: ${ideaTagline}
-Industry: ${ideaIndustry}
-Brief Description: ${ideaBrief}
+Idea Title: ${ideaName}
+Idea Description: ${ideaBrief}
 
-The questions should focus on:
-1. Market feasibility and demand
-2. Competitive landscape and uniqueness
-3. Scalability and growth potential
-4. Technical/operational feasibility
+The questions should explore how people perceive the idea in terms of:
 
-Each question should have 4 options (A, B, C, D) and one correct answer.
+Feasibility (Can this actually work?)
+Scalability (Can it grow big?)
+Market Potential (Would people use or pay for it?)
+Uniqueness (Is it different from others?)
 
-Return the response in the following JSON format:
+Each question should be written in easy, natural language (like asking a friend for their opinion), not in formal or academic tone.
+Avoid using any "correct" or "wrong" answers — all options should represent different viewpoints or levels of confidence.
+
+Format each question as an object in this JSON array:
+
 [
   {
     "question": "Question text here",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "correct_answer": 0
+    "options": [
+      "Option A text",
+      "Option B text", 
+      "Option C text",
+      "Option D text"
+    ],
+    "factor": "Feasibility"
   }
 ]
 
-Make sure the questions are practical and help validate the business idea's market potential.
+Make sure:
+- The options reflect different user sentiments (e.g., "Very likely", "Maybe", "Not sure", "Unlikely")
+- The tone stays simple, curious, and engaging
+- There's no correct_answer field
+- Each question focuses on one of the four factors: Feasibility, Scalability, Market Potential, or Uniqueness
 `
 
     try {
@@ -104,7 +115,8 @@ Make sure the questions are practical and help validate the business idea's mark
     ideaBrief: string,
     upvoteOpinions: string[],
     downvoteOpinions: string[],
-    maybeOpinions: string[]
+    maybeOpinions: string[],
+    mcqData: { mcqs: MCQ[], answers: number[][] }
   ): Promise<ValidationSummary> {
     const prompt = `
 Analyze the validation feedback for this business idea:
@@ -118,18 +130,34 @@ Upvote Opinions: ${upvoteOpinions.join('; ')}
 Downvote Opinions: ${downvoteOpinions.join('; ')}
 Maybe Opinions: ${maybeOpinions.join('; ')}
 
+MCQ Validation Data:
+${mcqData.mcqs.map((mcq, index) => {
+  const upvoteAnswers = mcqData.answers.filter((_, i) => i < upvoteOpinions.length).map(answers => answers[index]).filter(a => a !== -1)
+  const downvoteAnswers = mcqData.answers.filter((_, i) => i >= upvoteOpinions.length && i < upvoteOpinions.length + downvoteOpinions.length).map(answers => answers[index]).filter(a => a !== -1)
+  const maybeAnswers = mcqData.answers.filter((_, i) => i >= upvoteOpinions.length + downvoteOpinions.length).map(answers => answers[index]).filter(a => a !== -1)
+  
+  return `
+Question ${index + 1} (${mcq.factor}): ${mcq.question}
+Options: ${mcq.options.map((opt, i) => `${i}: ${opt}`).join(', ')}
+Upvote responses: ${upvoteAnswers.map(a => mcq.options[a]).join(', ') || 'No responses'}
+Downvote responses: ${downvoteAnswers.map(a => mcq.options[a]).join(', ') || 'No responses'}
+Maybe responses: ${maybeAnswers.map(a => mcq.options[a]).join(', ') || 'No responses'}`
+}).join('\n')}
+
 Please provide:
 1. A summary of key points from upvote opinions
 2. A summary of key points from downvote opinions  
 3. A summary of key points from maybe opinions
-4. An overall analysis of the idea's potential
-5. Three actionable recommendations for improving this idea
+4. An analysis of MCQ responses by validation factor (Feasibility, Scalability, Market Potential, Uniqueness)
+5. An overall analysis of the idea's potential
+6. Three actionable recommendations for improving this idea
 
 Return the response in the following JSON format:
 {
   "upvote_summary": "Summary of upvote feedback",
   "downvote_summary": "Summary of downvote feedback", 
   "maybe_summary": "Summary of maybe feedback",
+  "mcq_analysis": "Analysis of MCQ responses by factor",
   "overall_analysis": "Overall analysis of the idea",
   "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"]
 }
@@ -144,7 +172,7 @@ Return the response in the following JSON format:
         const summary = JSON.parse(jsonMatch[0])
         // Validate the structure
         if (summary.upvote_summary && summary.downvote_summary && summary.maybe_summary && 
-            summary.overall_analysis && Array.isArray(summary.recommendations)) {
+            summary.mcq_analysis && summary.overall_analysis && Array.isArray(summary.recommendations)) {
           return summary
         }
       }
