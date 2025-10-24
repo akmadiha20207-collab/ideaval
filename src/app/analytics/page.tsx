@@ -31,6 +31,7 @@ interface Validation {
   idea_id: string
   validator_id: string
   mcqs: any
+  mcq_answers: number[]
   vote: 'upvote' | 'downvote' | 'maybe'
   opinion_text: string
   created_at: string
@@ -114,6 +115,7 @@ export default function AnalyticsPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
+      
       setIdeas(data || [])
     } catch (error) {
       console.error('Error fetching ideas:', error)
@@ -125,7 +127,6 @@ export default function AnalyticsPage() {
 
   const fetchValidationsForIdea = async (ideaId: string) => {
     try {
-      console.log('Fetching validations for idea:', ideaId)
       const { data, error } = await supabase
         .from('validations')
         .select('*')
@@ -137,19 +138,26 @@ export default function AnalyticsPage() {
       }
       
       const validations = data || []
-      console.log('Fetched validations:', validations)
       setValidations(validations)
 
       // Calculate stats
       const stats = validations.reduce(
         (acc, validation) => {
-          acc[validation.vote]++
+          // Map vote values to accumulator keys
+          if (validation.vote === 'upvote') {
+            acc.upvotes++
+          } else if (validation.vote === 'downvote') {
+            acc.downvotes++
+          } else if (validation.vote === 'maybe') {
+            acc.maybes++
+          }
+          
           acc.total++
           return acc
         },
         { upvotes: 0, downvotes: 0, maybes: 0, total: 0 }
       )
-      console.log('Calculated stats:', stats)
+      
       setValidationStats(stats)
 
       // Generate AI summary if there are validations
@@ -303,13 +311,27 @@ export default function AnalyticsPage() {
                   {/* Selected Idea */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>{selectedIdea.title}</CardTitle>
+                      <CardTitle>{selectedIdea.name || selectedIdea.title || 'Untitled Idea'}</CardTitle>
                       <CardDescription>
+                        {selectedIdea.tagline || 'No tagline'} • {selectedIdea.industry || 'No industry'} •{' '}
                         Submitted on {new Date(selectedIdea.created_at).toLocaleDateString()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-gray-700">{selectedIdea.description}</p>
+                      <p className="text-gray-700">{selectedIdea.brief || selectedIdea.description || 'No description available'}</p>
+                      
+                      {Array.isArray(selectedIdea.tags) && selectedIdea.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          {selectedIdea.tags.map((tag, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

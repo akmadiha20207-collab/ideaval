@@ -14,7 +14,7 @@ A comprehensive AI-powered idea validation platform built for Edventure Park's i
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, TailwindCSS
+- **Frontend**: Next.js 16, TypeScript, TailwindCSS
 - **Backend**: Supabase (Database, Auth, Real-time)
 - **AI Integration**: Google Gemini API
 - **UI Components**: shadcn/ui, Radix UI
@@ -36,17 +36,21 @@ A comprehensive AI-powered idea validation platform built for Edventure Park's i
    cd idea-validation-portal
    ```
 
-2. **Run the setup script**
+2. **Install dependencies**
    ```bash
-   npm run setup
+   npm install
    ```
 
 3. **Configure environment variables**
-   - Update `.env.local` with your Supabase and Gemini API credentials
-   - See `BACKEND_README.md` for detailed setup instructions
+   Create a `.env.local` file with:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
+   ```
 
 4. **Set up the database**
-   - Run the SQL commands in `supabase-schema.sql` in your Supabase dashboard
+   - Run the SQL commands in `enhanced-schema.sql` in your Supabase dashboard
 
 5. **Start the development server**
    ```bash
@@ -84,55 +88,21 @@ src/
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
-- `npm run setup` - Run setup script
+- `npm run lint:fix` - Fix ESLint errors
 - `npm run type-check` - Run TypeScript type checking
-
-## 📚 Documentation
-
-- **Backend Setup**: See `BACKEND_README.md` for comprehensive setup instructions
-- **Database Schema**: See `supabase-schema.sql` for database structure
-- **API Documentation**: Supabase auto-generates API documentation
 
 ## 🔐 Environment Variables
 
 Create a `.env.local` file with the following variables:
 
 ```env
+# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-GEMINI_API_KEY=your_gemini_api_key
+
+# Gemini API Configuration
+NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
 ```
-
-## 🎯 Key Features Implementation
-
-### Authentication System
-- Email/password authentication
-- Google OAuth integration
-- User type selection (Campus Lead / Non-Campus Lead)
-- Protected routes and session management
-
-### Idea Management
-- Submit ideas with title and description
-- View submitted ideas in dashboard
-- Track validation progress
-
-### Validation System
-- AI-generated MCQs using Gemini API
-- Community voting (upvote/downvote/maybe)
-- Opinion collection and storage
-- Duplicate validation prevention
-
-### Analytics Dashboard
-- Interactive pie charts and bar charts
-- AI-powered opinion summarization
-- Comprehensive feedback analysis
-- Actionable recommendations
-
-### Admin Panel
-- User management and analytics
-- Idea management and filtering
-- Validation tracking and statistics
-- Platform overview and metrics
 
 ## 🚀 Deployment
 
@@ -142,10 +112,18 @@ GEMINI_API_KEY=your_gemini_api_key
 3. Add environment variables in Vercel dashboard
 4. Deploy automatically
 
-### Other Platforms
-- Update environment variables for production
-- Configure OAuth redirect URIs
-- Set up production database
+### Environment Variables for Production
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_production_anon_key
+NEXT_PUBLIC_GEMINI_API_KEY=your_production_gemini_key
+```
+
+### Database Setup
+1. Create a new Supabase project
+2. Run the SQL commands from `enhanced-schema.sql`
+3. Configure Row Level Security policies
+4. Set up OAuth providers in Supabase dashboard
 
 ## 🧪 Testing
 
@@ -183,10 +161,6 @@ GEMINI_API_KEY=your_gemini_api_key
 ## 📄 License
 
 This project is developed for Edventure Park, Masab Tank, Hyderabad.
-
-## 📞 Support
-
-For technical support or questions, please refer to the `BACKEND_README.md` file or contact the development team.
 
 ---
 

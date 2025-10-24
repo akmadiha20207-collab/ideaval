@@ -1,14 +1,15 @@
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+
+const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.REACT_APP_GEMINI_API_KEY || ''
 
 // Initialize Gemini AI with proper error handling
-let genAI: any = null
+let genAI: GoogleGenerativeAI | null = null
 
 try {
   if (!GEMINI_API_KEY) {
-    console.warn('GEMINI_API_KEY not found in environment variables')
+    console.warn('NEXT_PUBLIC_GEMINI_API_KEY not found in environment variables')
   } else {
-    genAI = { apiKey: GEMINI_API_KEY, apiUrl: GEMINI_API_URL }
+    genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
     console.log('Gemini AI initialized successfully')
   }
 } catch (error) {
@@ -30,79 +31,24 @@ export interface ValidationSummary {
 }
 
 export class GeminiService {
+  private model = genAI?.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
   private async callGeminiAPI(prompt: string) {
-    if (!genAI) {
-      throw new Error('Gemini API not initialized. Please check your GEMINI_API_KEY environment variable.')
+    if (!genAI || !this.model) {
+      throw new Error('Gemini API not initialized. Please check your NEXT_PUBLIC_GEMINI_API_KEY environment variable.')
     }
 
-    const response = await fetch(`${genAI.apiUrl}?key=${genAI.apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2000,
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          }
-        ]
-      })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error('Gemini API error:', errorData)
-      throw new Error(`Gemini API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Invalid response from Gemini API')
-    }
-
-    // Handle different response structures
-    if (data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-      return data.candidates[0].content.parts[0].text
-    } else if (data.candidates[0].content.text) {
-      return data.candidates[0].content.text
-    } else {
-      console.error('Unexpected response structure:', data.candidates[0].content)
-      throw new Error('Unexpected response structure from Gemini API')
+    try {
+      const result = await this.model.generateContent(prompt)
+      const response = await result.response
+      return response.text()
+    } catch (error) {
+      console.error('Gemini API error:', error)
+      throw new Error(`Gemini API error: ${error}`)
     }
   }
 
   async generateMCQs(ideaName: string, ideaTagline: string, ideaIndustry: string, ideaBrief: string): Promise<MCQ[]> {
-    console.log('Generating MCQs for:', { ideaName, ideaTagline, ideaIndustry, ideaBrief })
-    
     const prompt = `
 Generate 4 market-validation-related multiple-choice questions about this business idea:
 
@@ -132,30 +78,20 @@ Make sure the questions are practical and help validate the business idea's mark
 `
 
     try {
-      console.log('Calling Gemini API...')
-      
       const text = await this.callGeminiAPI(prompt)
-      console.log('Response text:', text)
       
       // Extract JSON from the response
       const jsonMatch = text.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
-        console.log('Found JSON match:', jsonMatch[0])
         const mcqs = JSON.parse(jsonMatch[0])
-        console.log('Parsed MCQs:', mcqs)
         // Validate the structure
         if (Array.isArray(mcqs) && mcqs.length === 4) {
-          console.log('MCQs validation passed')
           return mcqs
-        } else {
-          console.error('MCQs validation failed:', { length: mcqs.length, isArray: Array.isArray(mcqs) })
         }
-      } else {
-        console.error('No JSON match found in response')
       }
       
       throw new Error('Could not parse MCQ response or invalid format')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating MCQs:', error)
       throw error
     }

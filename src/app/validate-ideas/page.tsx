@@ -48,6 +48,7 @@ export default function ValidateIdeasPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [mcqLoading, setMcqLoading] = useState(false)
+  const [mcqError, setMcqError] = useState<string | null>(null)
   const { user } = useAuth()
 
   useEffect(() => {
@@ -74,17 +75,23 @@ export default function ValidateIdeasPage() {
   const handleIdeaSelect = async (idea: Idea) => {
     setSelectedIdea(idea)
     setMcqLoading(true)
+    setMcqError(null)
+    setMcqs([]) // Clear previous MCQs
+
+    // Add minimum loading time to ensure user sees the loading state
+    const startTime = Date.now()
+    const minLoadingTime = 1000 // 1 second minimum
 
     try {
       // Check if MCQs already exist for this idea
-      const { data: existingValidation } = await supabase
+      const { data: existingValidation, error: validationError } = await supabase
         .from('validations')
         .select('mcqs')
         .eq('idea_id', idea.id)
         .limit(1)
         .single()
 
-      if (existingValidation?.mcqs) {
+      if (existingValidation?.mcqs && Array.isArray(existingValidation.mcqs) && existingValidation.mcqs.length > 0) {
         setMcqs(existingValidation.mcqs)
         setMcqAnswers(new Array(existingValidation.mcqs.length).fill(-1))
       } else {
@@ -95,17 +102,33 @@ export default function ValidateIdeasPage() {
           idea.industry || 'No industry',
           idea.brief || idea.description || 'No description'
         )
-        setMcqs(generatedMcqs)
-        setMcqAnswers(new Array(generatedMcqs.length).fill(-1))
+        
+        if (generatedMcqs && Array.isArray(generatedMcqs) && generatedMcqs.length > 0) {
+          setMcqs(generatedMcqs)
+          setMcqAnswers(new Array(generatedMcqs.length).fill(-1))
+        } else {
+          throw new Error('Generated MCQs are empty or invalid')
+        }
       }
 
       setOpinion('')
       setVote(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating MCQs:', error)
+      setMcqError(error.message || 'Failed to generate validation questions')
       toast.error('Failed to generate validation questions')
     } finally {
-      setMcqLoading(false)
+      // Ensure minimum loading time
+      const elapsedTime = Date.now() - startTime
+      const remainingTime = Math.max(0, minLoadingTime - elapsedTime)
+      
+      if (remainingTime > 0) {
+        setTimeout(() => {
+          setMcqLoading(false)
+        }, remainingTime)
+      } else {
+        setMcqLoading(false)
+      }
     }
   }
 
@@ -121,6 +144,7 @@ export default function ValidateIdeasPage() {
     setMcqAnswers([])
     setOpinion('')
     setVote(null)
+    setMcqError(null)
   }
 
   const handleSubmitValidation = async () => {
@@ -335,7 +359,19 @@ export default function ValidateIdeasPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {mcqs.length > 0 ? (
+                    {mcqError ? (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h4 className="font-medium text-red-800 mb-2">Error generating questions:</h4>
+                        <p className="text-red-700 text-sm mb-4">{mcqError}</p>
+                        <Button 
+                          onClick={() => handleIdeaSelect(selectedIdea!)} 
+                          variant="outline" 
+                          size="sm"
+                        >
+                          Try Again
+                        </Button>
+                      </div>
+                    ) : mcqs.length > 0 ? (
                       mcqs.map((mcq, questionIndex) => (
                         <div key={questionIndex} className="space-y-3">
                           <h4 className="font-medium">
@@ -361,7 +397,16 @@ export default function ValidateIdeasPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-gray-500 text-sm">No questions generated.</p>
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 text-sm mb-4">No questions available.</p>
+                        <Button 
+                          onClick={() => handleIdeaSelect(selectedIdea!)} 
+                          variant="outline" 
+                          size="sm"
+                        >
+                          Generate Questions
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
